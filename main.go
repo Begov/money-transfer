@@ -13,6 +13,7 @@ type User struct {
 
 func (u *User) Deposit(coins float64) {
 	u.Balance += coins
+	fmt.Printf("Счёт пользователя %s пополнен на %.2f\n", u.Name, coins)
 }
 
 func (u *User) Withdraw(coins float64) error {
@@ -28,25 +29,15 @@ func main() {
 	user2 := User{ID: "2", Name: "Артем", Balance: 1268.04}
 
 	user1.Deposit(200)
-	fmt.Println(user1.Balance)
 
-	err := user1.Withdraw(700)
-
-	if err != nil {
-		fmt.Printf("%v\n", err)
-	} else {
-		fmt.Println(user1.Balance)
+	if err := user1.Withdraw(700); err != nil {
+		fmt.Printf("%s: %s\n", user1.Name, err)
 	}
 
-	user2.Deposit(200)
-	fmt.Println(user2.Balance)
-
-	err = user2.Withdraw(500)
-
-	if err != nil {
-		fmt.Printf("%v", err)
-	} else {
-		fmt.Println(user2.Balance)
+	if err := user2.Withdraw(700); err != nil {
+		fmt.Printf("%s: %s\n", user2.Name, err)
 	}
 
+	fmt.Printf("%s: %.2f на балансе.\n", user1.Name, user1.Balance)
+	fmt.Printf("%s: %.2f на балансе.\n", user2.Name, user2.Balance)
 }
