@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type User struct {
@@ -43,29 +44,35 @@ func (ps *PaymentSystem) AddTransaction(t Transaction) {
 	ps.Transactions = append(ps.Transactions, t)
 }
 
-func (ps *PaymentSystem) ProcessingTransactions() error {
-	for _, t := range ps.Transactions {
-		fromUser, fromExist := ps.Users[t.FromID]
-		toUser, toExist := ps.Users[t.ToID]
+func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
+	fromUser, fromExist := ps.Users[t.FromID]
+	toUser, toExist := ps.Users[t.ToID]
 
-		if !fromExist {
-			return fmt.Errorf("user with ID %s not found", t.FromID)
-		}
-
-		if !toExist {
-			return fmt.Errorf("user with ID %s not found", t.ToID)
-		}
-
-		if err := fromUser.Withdraw(t.Amount); err != nil {
-			return fmt.Errorf("Error: %v", err)
-		}
-
-		toUser.Deposit(t.Amount)
-
+	if !fromExist {
+		return fmt.Errorf("user with ID %s not found", t.FromID)
 	}
 
-	ps.Transactions = nil
+	if !toExist {
+		return fmt.Errorf("user with ID %s not found", t.ToID)
+	}
+
+	if err := fromUser.Withdraw(t.Amount); err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	toUser.Deposit(t.Amount)
+
 	return nil
+}
+
+func (ps *PaymentSystem) Worker(ch chan Transaction, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for t := range ch {
+		err := ps.ProcessingTransactions(t)
+		if err != nil {
+			fmt.Printf("Error: %v", err)
+		}
+	}
 }
 
 func main() {
@@ -81,13 +88,24 @@ func main() {
 	ps.AddUser(user1)
 	ps.AddUser(user2)
 
-	ps.AddTransaction(Transaction{"1", "2", 200})
+	ps.AddTransaction(Transaction{"1", "2", 100})
 	ps.AddTransaction(Transaction{"2", "1", 50})
 
-	if err := ps.ProcessingTransactions(); err != nil {
-		fmt.Printf("Error: %v", err)
-		return
+	ch := make(chan Transaction, len(ps.Transactions))
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go ps.Worker(ch, &wg)
 	}
+
+	for _, t := range ps.Transactions {
+		ch <- t
+	}
+
+	close(ch)
+	wg.Wait()
 
 	fmt.Printf("%s: %.2f на балансе.\n", user1.Name, user1.Balance)
 	fmt.Printf("%s: %.2f на балансе.\n", user2.Name, user2.Balance)
