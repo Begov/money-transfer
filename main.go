@@ -81,7 +81,7 @@ func main() {
 	ps.AddUser(user1)
 	ps.AddUser(user2)
 
-	ps.AddTransaction(Transaction{"1", "2", 200})
+	ps.AddTransaction(Transaction{"1", "2", 100})
 	ps.AddTransaction(Transaction{"2", "1", 50})
 
 	if err := ps.ProcessingTransactions(); err != nil {
