@@ -3,20 +3,26 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type User struct {
 	ID      string
 	Name    string
 	Balance float64
+	mu      sync.Mutex
 }
 
 func (u *User) Deposit(coins float64) {
+	defer u.mu.Unlock()
+	u.mu.Lock()
 	u.Balance += coins
 	fmt.Printf("Счёт пользователя %s пополнен на %.2f\n", u.Name, coins)
 }
 
 func (u *User) Withdraw(coins float64) error {
+	defer u.mu.Unlock()
+	u.mu.Lock()
 	if u.Balance-coins < 0 {
 		return errors.New("insufficient funds on balance")
 	}
@@ -24,19 +30,87 @@ func (u *User) Withdraw(coins float64) error {
 	return nil
 }
 
+type Transaction struct {
+	FromID string
+	ToID   string
+	Amount float64
+}
+
+type PaymentSystem struct {
+	Users        map[string]*User
+	Transactions []Transaction
+}
+
+func (ps *PaymentSystem) AddUser(u *User) {
+	ps.Users[u.ID] = u
+}
+
+func (ps *PaymentSystem) AddTransaction(t Transaction) {
+	ps.Transactions = append(ps.Transactions, t)
+}
+
+func (ps *PaymentSystem) ProcessingTransactions(t Transaction) error {
+	fromUser, fromExist := ps.Users[t.FromID]
+	toUser, toExist := ps.Users[t.ToID]
+
+	if !fromExist {
+		return fmt.Errorf("user with ID %s not found", t.FromID)
+	}
+
+	if !toExist {
+		return fmt.Errorf("user with ID %s not found", t.ToID)
+	}
+
+	if err := fromUser.Withdraw(t.Amount); err != nil {
+		return fmt.Errorf("Error: %v", err)
+	}
+
+	toUser.Deposit(t.Amount)
+
+	return nil
+}
+
+func (ps *PaymentSystem) Worker(ch chan Transaction, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for t := range ch {
+		err := ps.ProcessingTransactions(t)
+		if err != nil {
+			fmt.Printf("Error: %v", err)
+		}
+	}
+}
+
 func main() {
-	user1 := User{ID: "1", Name: "Иван", Balance: 400}
-	user2 := User{ID: "2", Name: "Артем", Balance: 1268.04}
 
-	user1.Deposit(200)
-
-	if err := user1.Withdraw(700); err != nil {
-		fmt.Printf("%s: %s\n", user1.Name, err)
+	ps := &PaymentSystem{
+		Users:        make(map[string]*User),
+		Transactions: []Transaction{},
 	}
 
-	if err := user2.Withdraw(700); err != nil {
-		fmt.Printf("%s: %s\n", user2.Name, err)
+	user1 := &User{ID: "1", Name: "Иван", Balance: 400}
+	user2 := &User{ID: "2", Name: "Артем", Balance: 1000}
+
+	ps.AddUser(user1)
+	ps.AddUser(user2)
+
+	ps.AddTransaction(Transaction{"1", "2", 100})
+	ps.AddTransaction(Transaction{"2", "1", 50})
+
+	ch := make(chan Transaction, len(ps.Transactions))
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go ps.Worker(ch, &wg)
 	}
+
+	for _, t := range ps.Transactions {
+		ch <- t
+	}
+
+	close(ch)
+	wg.Wait()
 
 	fmt.Printf("%s: %.2f на балансе.\n", user1.Name, user1.Balance)
 	fmt.Printf("%s: %.2f на балансе.\n", user2.Name, user2.Balance)
