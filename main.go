@@ -29,13 +29,14 @@ func main() {
 	user2 := &User{ID: "2", Name: "Артем", Balance: 1268.04}
 
 	user1.Deposit(200)
+	user2.Deposit(500)
 
 	if err := user1.Withdraw(700); err != nil {
-		fmt.Printf("%s: %s\n", user1.Name, err)
+		fmt.Printf("Error: %v\n", err)
 	}
 
 	if err := user2.Withdraw(700); err != nil {
-		fmt.Printf("%s: %s\n", user2.Name, err)
+		fmt.Printf("Error: %v\n", err)
 	}
 
 	fmt.Printf("%s: %.2f на балансе.\n", user1.Name, user1.Balance)
