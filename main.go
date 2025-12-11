@@ -31,11 +31,11 @@ type Transaction struct {
 }
 
 type PaymentSystem struct {
-	Users        map[string]User
+	Users        map[string]*User
 	Transactions []Transaction
 }
 
-func (ps *PaymentSystem) AddUser(u User) {
+func (ps *PaymentSystem) AddUser(u *User) {
 	ps.Users[u.ID] = u
 }
 
@@ -62,8 +62,6 @@ func (ps *PaymentSystem) ProcessingTransactions() error {
 
 		toUser.Deposit(t.Amount)
 
-		// ps.Users[t.FromID] = fromUser
-		// ps.Users[t.ToID] = toUser
 	}
 
 	ps.Transactions = nil
@@ -73,15 +71,15 @@ func (ps *PaymentSystem) ProcessingTransactions() error {
 func main() {
 
 	ps := &PaymentSystem{
-		Users:        make(map[string]User),
+		Users:        make(map[string]*User),
 		Transactions: []Transaction{},
 	}
 
 	user1 := &User{ID: "1", Name: "Иван", Balance: 400}
-	user2 := &User{ID: "2", Name: "Артем", Balance: 1268.04}
+	user2 := &User{ID: "2", Name: "Артем", Balance: 1000}
 
-	ps.AddUser(*user1)
-	ps.AddUser(*user2)
+	ps.AddUser(user1)
+	ps.AddUser(user2)
 
 	ps.AddTransaction(Transaction{"1", "2", 200})
 	ps.AddTransaction(Transaction{"2", "1", 50})
@@ -91,4 +89,6 @@ func main() {
 		return
 	}
 
+	fmt.Printf("%s: %.2f на балансе.\n", user1.Name, user1.Balance)
+	fmt.Printf("%s: %.2f на балансе.\n", user2.Name, user2.Balance)
 }
