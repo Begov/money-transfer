@@ -36,9 +36,6 @@ type PaymentSystem struct {
 }
 
 func (ps *PaymentSystem) AddUser(u User) {
-	if ps.Users == nil {
-		ps.Users = make(map[string]User)
-	}
 	ps.Users[u.ID] = u
 }
 
@@ -54,18 +51,19 @@ func (ps *PaymentSystem) ProcessingTransactions() error {
 		if !fromExist {
 			return fmt.Errorf("user with ID %s not found", t.FromID)
 		}
+
 		if !toExist {
 			return fmt.Errorf("user with ID %s not found", t.ToID)
 		}
 
 		if err := fromUser.Withdraw(t.Amount); err != nil {
-			return fmt.Errorf("error withdrawing from user %s: %v", t.FromID, err)
+			return fmt.Errorf("Error: %v", err)
 		}
 
 		toUser.Deposit(t.Amount)
 
-		ps.Users[t.FromID] = fromUser
-		ps.Users[t.ToID] = toUser
+		// ps.Users[t.FromID] = fromUser
+		// ps.Users[t.ToID] = toUser
 	}
 
 	ps.Transactions = nil
@@ -89,7 +87,7 @@ func main() {
 	ps.AddTransaction(Transaction{"2", "1", 50})
 
 	if err := ps.ProcessingTransactions(); err != nil {
-		fmt.Println("Error processing transactions:", err)
+		fmt.Printf("Error: %v", err)
 		return
 	}
 
